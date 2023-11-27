@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 //remote:
@@ -96,7 +97,7 @@ const monthsMap: MonthMap = {
 
 const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,9 +112,9 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
     fileInputRef.current?.click();
   };
 
-  const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
-  const [editedTitles, setEditedTitles] = useState<{ [key: number]: string }>({});
-  const [encryptionEnabled, setEncryptionEnabled] = useState(false);
+  const [editMode, setEditMode] = React.useState<{ [key: number]: boolean }>({});
+  const [editedTitles, setEditedTitles] = React.useState<{ [key: number]: string }>({});
+  const [encryptionEnabled, setEncryptionEnabled] = React.useState(false);
 
 
   const handleEditClick = (index: number) => {
@@ -236,7 +237,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
 
   const defaultPDFType = 'application/pdf';
 
-  const [pdfList, setPDFList] = useState<PDFList>([]);
+  const [pdfList, setPDFList] = React.useState<PDFList>([]);
   //asederado@gmail.com_704c914b6112e43ed51b0d7d3ecf11492ca26b21ab44ec4abd8ecb89818bcaa94f4bd6a9
 
   // Function to save a specific page as a new PDF
@@ -266,7 +267,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
     //download(pdfBytes, date, 'application/pdf');
   };
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   // Function to trigger file download
   const download = async (data: Uint8Array, filename: string, type: string, dni: string) => {
