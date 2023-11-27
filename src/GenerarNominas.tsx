@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.mjs'
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.mjs', import.meta.url).href;
 import { PDFDocument } from 'pdf-lib';
 
 
