@@ -195,7 +195,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
 
 
         if (extracted) {
-          await savePageAsPDF(await selectedFile.arrayBuffer(), i, extracted.trim() + '.pdf');
+          savePageAsPDF(await selectedFile.arrayBuffer(), i, extracted.trim() + '.pdf');
         }
 
       }
