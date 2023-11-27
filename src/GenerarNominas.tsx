@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+
+//remote:
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdf.worker.mjs', import.meta.url).href;
+//local:
+//pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.mjs'
 import { PDFDocument } from 'pdf-lib';
+import { addSecurityToPdf, getPresignedUrl, uploadFile } from './utils/pdf-encryption/PDFSecurity';
 
 
 
@@ -108,6 +113,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
 
   const [editMode, setEditMode] = useState<{ [key: number]: boolean }>({});
   const [editedTitles, setEditedTitles] = useState<{ [key: number]: string }>({});
+  const [encryptionEnabled, setEncryptionEnabled] = useState(false);
 
 
   const handleEditClick = (index: number) => {
@@ -151,6 +157,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
         let monthCode = '';
         let yearCode = '';
         let name = '';
+        let dni = '';
         textContent.items.forEach((item) => {
           //log the text items on the console
           if ('transform' in item) {
@@ -186,6 +193,18 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
               height >= nameArea.height - 15 && height <= nameArea.height + 15) {
               name = item.str;
             }
+
+            //48J:
+            //x: 460
+            //y: 550
+            //width: 18
+            //height: 10
+
+            if (x >= 460 - 10 && x <= 460 + 10 &&
+              y >= 550 - 10 && y <= 550 + 10 &&
+              height >= 10 - 15 && height <= 10 + 15) {
+              dni = item.str;
+            }
           }
         });
         if (monthsMap[monthCode]) {
@@ -195,7 +214,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
 
 
         if (extracted) {
-          savePageAsPDF(await selectedFile.arrayBuffer(), i, extracted.trim() + '.pdf');
+          savePageAsPDF(await selectedFile.arrayBuffer(), i, extracted.trim() + '.pdf', dni);
         }
 
       }
@@ -209,6 +228,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
     pdfBytes: Uint8Array;
     title: string;
     type: string; // Fix: Added missing type annotation
+    dni: string;
   };
 
   type PDFList = PDFItem[];
@@ -217,15 +237,17 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
   const defaultPDFType = 'application/pdf';
 
   const [pdfList, setPDFList] = useState<PDFList>([]);
-
+  //asederado@gmail.com_704c914b6112e43ed51b0d7d3ecf11492ca26b21ab44ec4abd8ecb89818bcaa94f4bd6a9
 
   // Function to save a specific page as a new PDF
-  const savePageAsPDF = async (pdfDoc: ArrayBuffer, pageNum: number, title: string) => {
+  const savePageAsPDF = async (pdfDoc: ArrayBuffer, pageNum: number, title: string, dni: string) => {
     const existingPdfDoc = await PDFDocument.load(pdfDoc);
 
     const newPdfDoc = await PDFDocument.create();
     const [copiedPage] = await newPdfDoc.copyPages(existingPdfDoc, [pageNum - 1]);
     newPdfDoc.addPage(copiedPage);
+
+
 
     const pdfBytes = await newPdfDoc.save();
 
@@ -233,6 +255,7 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
       pdfBytes,
       title,
       type: defaultPDFType,
+      dni: dni
     }]
 
     setPDFList((pdfList) => [
@@ -243,19 +266,43 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
     //download(pdfBytes, date, 'application/pdf');
   };
 
+  const [isLoading, setIsLoading] = useState(false);
+
   // Function to trigger file download
-  const download = (data: Uint8Array, filename: string, type: string) => {
-    const file = new Blob([data], { type: type });
-    const a = document.createElement('a');
-    const url = URL.createObjectURL(file);
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 0);
+  const download = async (data: Uint8Array, filename: string, type: string, dni: string) => {
+    if (!encryptionEnabled) {
+      const file = new Blob([data], { type: type });
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(file);
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 0);
+    } else {
+      if (data) {
+        setIsLoading(true);
+        try {
+          const presignedUrlResponse = await getPresignedUrl(filename);
+          setTimeout(() => {
+          }, 1000);
+          const blob = new Blob([data], { type: type });
+          setTimeout(() => {
+          }, 1000);
+          const file = new File([blob], filename, { type: type });
+          await uploadFile(presignedUrlResponse.presignedUrl, file);
+          setTimeout(() => {
+          }, 1000);
+          await addSecurityToPdf(presignedUrlResponse.url, filename, dni);
+        } catch (error) {
+          console.error("Error:", error);
+        }
+        setIsLoading(false);
+      }
+    }
   };
 
   return (
@@ -283,19 +330,36 @@ const GenerarNominas = ({ dateArea, nameArea }: GenerarNominas) => {
           )}
         </div>
       </div>
-      <h3 className="text-3xl font-bold">PDFs Generados:</h3>
+      {isLoading ? <h3 className="text-3xl font-bold">Cargando...</h3> : <h3 className="text-3xl font-bold">PDFs Generados:</h3>}
       {pdfList && pdfList.length > 0 && (
         <div className="my-4">
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={() => {
-              pdfList.forEach((pdf) => {
-                download(pdf.pdfBytes, pdf.title, pdf.type);
-              });
-            }}
-          >
-            Descargar todos ({pdfList.length})
-          </button>
+
+          {/* Encryption checkbox: */}
+          <div className="flex justify-center m-2 items-center align-content-center ml-4">
+            <button
+              className="bg-blue-500 mr-2 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              onClick={() => {
+                pdfList.forEach(async (pdf) => {
+                  await download(pdf.pdfBytes, pdf.title, pdf.type, pdf.dni);
+                });
+              }}
+            >
+              Descargar todos ({pdfList.length})
+            </button>
+            <label className="flex justify-center m-2 items-center align-content-center ml-4">
+              <input
+                type="checkbox"
+                style={{
+                  width: '1.25rem',
+                  height: '1.25rem',
+                }}
+                className='form-checkbox'
+                checked={encryptionEnabled}
+                onChange={(e) => setEncryptionEnabled(e.target.checked)}
+              />
+              <span className="ml-3 pr-3 mb-1">Encriptar</span>
+            </label>
+          </div>
         </div>
       )}
 
