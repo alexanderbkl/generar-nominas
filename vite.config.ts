@@ -17,7 +17,6 @@ export default defineConfig({
   build: {
     target: 'esnext',
   },
-  base: "/generar-nominas/",
   resolve: {
     alias: {
       'pdf-lib-with-encrypt': 'pdf-lib-with-encrypt/lib/esm/index.js',
