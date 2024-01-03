@@ -1,4 +1,5 @@
 import os
+import re
 import fitz  # PyMuPDF
 from PyPDF2 import PdfWriter, PdfReader
 
@@ -39,39 +40,49 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
                         x, y, w, h = span['bbox']  # Extract x and y from bbox
                         text = span['text']
 
-                        #if "4940" in text or "7758" in text:
+                        #if "ADRI" in text or "7758" in text:
                         #    print(f"Text:\n{text}\nat (X: {x}, Y: {y})\nwith width {w} and height {h}\n\n")
 
                         # Check if text is within name area with margin
-                        if (name_area['x'] - margin <= x <= name_area['x'] + name_area['width'] + margin and
+                        if (name_area['x'] - 600 <= x <= name_area['x'] + name_area['width'] + 600 and
                             name_area['y'] - 5 <= y <= name_area['y'] + 5 and
-                            name_area['width'] - 50 <= w <= name_area['width'] + 50 and
+                            name_area['width'] - 300 <= w <= name_area['width'] + 300 and
                             name_area['height'] - 5 <= h <= name_area['height'] + 5):
 
                             #print(f"Name found: {text} at ({x}, {y})\nwidth {w} and height {h}\n")
                             name = text.strip()
-                        if (dni_area['x'] - margin <= x <= dni_area['x'] + dni_area['width'] + margin and
+                        if (
                             dni_area['y'] - margin <= y <= dni_area['y'] + margin and
                             dni_area['width'] - 50 <= w <= dni_area['width'] + 50 and
                             dni_area['height'] - 5 <= h <= dni_area['height'] + 5):
                             dni_parts = text.split(" ")
-                            dni = dni_parts[5]
+                            # Regex for DNI/NIE
+                            dni_regex = r"\b[XYZ]?\d{7,8}[A-Z]\b"
+
+                            for part in dni_parts:
+                                if re.match(dni_regex, part):
+                                    dni = part
+                                    break
 
                         # Check if text is within date area with margin
-                        if (date_area['x'] - 50 <= x <= date_area['x'] + 50 and
+                        if (date_area['x'] - 500 <= x <= date_area['x'] + 500 and
                             date_area['y'] - 5 <= y <= date_area['y'] + 5):
                             #print(f"Date found: {text} at ({x}, {y})")
                             #Text I'm getting:
                             #20 MENS 02 OCT 23 a 31 OCT 23
                             # Select "02" and "OCT" by splitting the text
-                            date = text.split(" ")
-                            if len(date) >= 6:
-                                month_code = date[5]
-                                year_code = date[6]
-                            #print(f"Date: {date[5]} {date[6]}")
+                            date = text
+                            date_regex = r"MENS\s+(\d{2})\s+([A-Z]{3})\s+(\d{2})"
+
+                            match = re.search(date_regex, date)
+                            if match:
+                                month_code = match.group(2)
+                                #day = match.group(1)
+                                year_code = match.group(3)
+                                #print(f"Month Code: {month_code}, Year Code: {year_code}")
         if month_code in months_map:
             temp_file_name = f"temp_{page_num}.pdf"
-            file_name = f"{dni}_20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}.pdf"
+            file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}.pdf"
 
 
             # Create a new PDF document with the current page
@@ -88,22 +99,33 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
             pdf_reader  = PdfReader(os.path.join(output_folder, temp_file_name))
             pdf_writer = PdfWriter()
 
-            for i in pdf_reader.pages:
-                pdf_writer.add_page(i)
             
-            pdf_writer.encrypt(user_password=dni, owner_pwd=None, use_128bit=True)
 
             encrypted_pdf_path = os.path.join(output_folder, file_name)
+
+            if os.path.exists(encrypted_pdf_path):
+                existing_pdf_reader = PdfReader(encrypted_pdf_path)
+                # Append existing pages
+                for i in existing_pdf_reader.pages:
+                    pdf_writer.add_page(i)
+
+            for i in pdf_reader.pages:
+                pdf_writer.add_page(i)
+
+            pdf_writer.encrypt(user_password=dni, owner_pwd=None, use_128bit=True)
+
             with open(encrypted_pdf_path, 'wb') as fh:
                 pdf_writer.write(fh)
                 
-            
+            print(f"Created {file_name}")
             # Delete the temporary PDF document
             os.remove(temp_pdf_path)
 
             
             
-            # Encrypt
+            
+        else:
+            print(f"Month code {month_code} not found in months map")
             
     doc.close()
 
@@ -130,6 +152,9 @@ dni_area = {
 }
 
 # Path to the PDF file
-pdf_path = "./Nominas holding.pdf"
+pdf_path = "./nominas.pdf"
+#pdf_path = "./Nomina censurada.pdf"
+
+print("Iniciando programa...")
 
 process_pdf(pdf_path, name_area, date_area)

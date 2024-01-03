@@ -1,0 +1,8 @@
+Comandos:
+
+pip install -r requirements.txt
+(fitz, pymupdf, pypdf2, pyinstaller)
+pyinstaller --onefile script.py
+
+
+python script.py
