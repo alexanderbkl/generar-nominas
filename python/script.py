@@ -32,6 +32,7 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
         month_code = ""
         year_code = ""
         dni = ""
+        postal_code = ""
 
         for block in text_dict["blocks"]:
             if "lines" in block:  # Check if lines key exists
@@ -40,8 +41,8 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
                         x, y, w, h = span['bbox']  # Extract x and y from bbox
                         text = span['text']
 
-                        #if "ADRI" in text or "7758" in text:
-                        #    print(f"Text:\n{text}\nat (X: {x}, Y: {y})\nwith width {w} and height {h}\n\n")
+                        if "3000" in text or "7758" in text:
+                            print(f"Text:\n{text}\nat (X: {x}, Y: {y})\nwith width {w} and height {h}\n\n")
 
                         # Check if text is within name area with margin
                         if (name_area['x'] - 600 <= x <= name_area['x'] + name_area['width'] + 600 and
@@ -51,6 +52,17 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
 
                             #print(f"Name found: {text} at ({x}, {y})\nwidth {w} and height {h}\n")
                             name = text.strip()
+                        if (postal_code_area['x'] - margin <= x <= postal_code_area['x'] + margin and
+                            postal_code_area['y'] - margin <= y <= postal_code_area['y'] + margin and
+                            postal_code_area['width'] - 300 <= w <= postal_code_area['width'] + 300 and
+                            postal_code_area['height'] - 300 <= h <= postal_code_area['height'] + 300):
+                            postal_code_parts = text.split(" ")
+                            # Regex for digits of any length (postal code)
+                            postal_code_regex = r"\d+"
+                            for part in postal_code_parts:
+                                if re.match(postal_code_regex, part):
+                                    postal_code = part
+                                    break
                         if (
                             dni_area['y'] - margin <= y <= dni_area['y'] + margin and
                             dni_area['width'] - 50 <= w <= dni_area['width'] + 50 and
@@ -82,7 +94,7 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
                                 #print(f"Month Code: {month_code}, Year Code: {year_code}")
         if month_code in months_map:
             temp_file_name = f"temp_{page_num}.pdf"
-            file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}.pdf"
+            file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}.pdf"
 
 
             # Create a new PDF document with the current page
@@ -103,19 +115,41 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
 
             encrypted_pdf_path = os.path.join(output_folder, file_name)
 
+            index = 0
             if os.path.exists(encrypted_pdf_path):
-                existing_pdf_reader = PdfReader(encrypted_pdf_path)
-                # Append existing pages
-                for i in existing_pdf_reader.pages:
-                    pdf_writer.add_page(i)
+                # If the file already exists, modify the name to add a number
+                index = 1
+                file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}_{index}.pdf"
+                encrypted_pdf_path = os.path.join(output_folder, file_name)
+                
+                while os.path.exists(encrypted_pdf_path):
+                    index += 1
+                    file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}_{index}.pdf"
+                    encrypted_pdf_path = os.path.join(output_folder, file_name)
+            
+            
 
+                
+
+                #existing_pdf_reader = PdfReader(encrypted_pdf_path)
+                # Append existing pages
             for i in pdf_reader.pages:
                 pdf_writer.add_page(i)
 
-            pdf_writer.encrypt(user_password=dni, owner_pwd=None, use_128bit=True)
+            #for i in pdf_reader.pages:
+            #    pdf_writer.add_page(i)
+
+            # Encrypt the PDF
+
+            pdf_writer.encrypt(user_password=postal_code, owner_pwd=None, use_128bit=True)
+
+            # Write the encrypted PDF to a file
+            
 
             with open(encrypted_pdf_path, 'wb') as fh:
                 pdf_writer.write(fh)
+
+            # Close the PDF reader and writer
                 
             print(f"Created {file_name}")
             # Delete the temporary PDF document
@@ -149,6 +183,13 @@ dni_area = {
     "y": 282,
     "width": 500,
     "height": 295,
+}
+
+postal_code_area = {
+    "x": 273,
+    "y": 183,
+    "width": 385,
+    "height": 197
 }
 
 # Path to the PDF file
