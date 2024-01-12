@@ -94,7 +94,9 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
                                 #print(f"Month Code: {month_code}, Year Code: {year_code}")
         if month_code in months_map:
             temp_file_name = f"temp_{page_num}.pdf"
-            file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}.pdf"
+            base_file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}"
+
+            file_name = f"{base_file_name}.pdf"
 
 
             # Create a new PDF document with the current page
@@ -114,27 +116,45 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
             
 
             encrypted_pdf_path = os.path.join(output_folder, file_name)
+            indexed_file_name = f"{base_file_name}_1.pdf"
+            indexed_encrypted_pdf_path = os.path.join(output_folder, indexed_file_name)
 
-            index = 0
             if os.path.exists(encrypted_pdf_path):
                 # If the file already exists, modify the name to add a number
-                index = 1
-                file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}_{index}.pdf"
-                encrypted_pdf_path = os.path.join(output_folder, file_name)
-                
-                while os.path.exists(encrypted_pdf_path):
-                    index += 1
-                    file_name = f"20{year_code}{months_map[month_code]['number']:02d}_Nomina {months_map[month_code]['name']}_{name}_{dni}_{index}.pdf"
-                    encrypted_pdf_path = os.path.join(output_folder, file_name)
-            
-            
+                new_file_name = f"{base_file_name}_1.pdf"
+                new_encrypted_pdf_path = os.path.join(output_folder, new_file_name)
+                # Check if a "_1" version of the file already exists
+                if not os.path.exists(new_encrypted_pdf_path):
+                    # Rename the existing file to append "_1"
+                    os.rename(encrypted_pdf_path, new_encrypted_pdf_path)
+                    print(f"File {file_name} already exists, renaming to {new_file_name}")
 
+                # Start numbering from 2 for the new file
+                index = 2
+                while True:
+                    file_name = f"{base_file_name}_{index}.pdf"
+                    encrypted_pdf_path = os.path.join(output_folder, file_name)
+                    if not os.path.exists(encrypted_pdf_path):
+                        break
+                    index += 1
+            elif os.path.exists(indexed_encrypted_pdf_path):
+                # count the number of files with the same name to get the index
+                index = 2
+                while True:
+                    file_name = f"{base_file_name}_{index}.pdf"
+                    encrypted_pdf_path = os.path.join(output_folder, file_name)
+                    if not os.path.exists(encrypted_pdf_path):
+                        break
+                    index += 1
+            else:
+                # If the file doesn't exist, use the original name
+                encrypted_pdf_path = os.path.join(output_folder, file_name)
                 
 
                 #existing_pdf_reader = PdfReader(encrypted_pdf_path)
                 # Append existing pages
-            for i in pdf_reader.pages:
-                pdf_writer.add_page(i)
+            for page in pdf_reader.pages:
+                pdf_writer.add_page(page)
 
             #for i in pdf_reader.pages:
             #    pdf_writer.add_page(i)
