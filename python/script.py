@@ -41,7 +41,7 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
                         x, y, w, h = span['bbox']  # Extract x and y from bbox
                         text = span['text']
 
-                        if "3000" in text or "7758" in text:
+                        if "30205" in text or "7758" in text:
                             print(f"Text:\n{text}\nat (X: {x}, Y: {y})\nwith width {w} and height {h}\n\n")
 
                         # Check if text is within name area with margin
@@ -52,11 +52,12 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
 
                             #print(f"Name found: {text} at ({x}, {y})\nwidth {w} and height {h}\n")
                             name = text.strip()
-                        if (postal_code_area['x'] - margin <= x <= postal_code_area['x'] + margin and
+                        if (postal_code_area['x'] - 400 <= x <= postal_code_area['x'] + 400 and
                             postal_code_area['y'] - margin <= y <= postal_code_area['y'] + margin and
-                            postal_code_area['width'] - 300 <= w <= postal_code_area['width'] + 300 and
+                            postal_code_area['width'] - 400 <= w <= postal_code_area['width'] + 400 and
                             postal_code_area['height'] - 300 <= h <= postal_code_area['height'] + 300):
                             postal_code_parts = text.split(" ")
+                            print(postal_code_parts)
                             # Regex for digits of any length (postal code)
                             postal_code_regex = r"\d+"
                             for part in postal_code_parts:
@@ -161,6 +162,9 @@ def process_pdf(pdf_path, name_area, date_area, margin=20):
 
             # Encrypt the PDF
 
+            # if postal code is empty, print a warning
+            if not postal_code:
+                print(f"WARNING: Postal code not found for {file_name}")
             pdf_writer.encrypt(user_password=postal_code, owner_pwd=None, use_128bit=True)
 
             # Write the encrypted PDF to a file

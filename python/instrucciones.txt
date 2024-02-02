@@ -2,6 +2,9 @@ Comandos:
 
 pip install -r requirements.txt
 (fitz, pymupdf, pypdf2, pyinstaller)
+
+.\myenv\Scripts\activate (activar entorno virtual para que la generación
+del ejecutable sólo genere las librerías que se usan en el script)
 pyinstaller --onefile script.py
 
 
